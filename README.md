@@ -4,7 +4,7 @@ Uzima Live is a real-time, multimodal AI health agent designed for the Uzima Mes
 
 ## 🌐 Live Demo
 
-You can access the live application at: [https://studio--studio-9351178115-815ac.us-central1.hosted.app/p](https://studio--studio-9351178115-815ac.us-central1.hosted.app/)
+You can access the live application at: [https://studio--studio-9351178115-815ac.us-central1.hosted.app/](https://studio--studio-9351178115-815ac.us-central1.hosted.app/)
 
 ## 🚀 Key Features
 
