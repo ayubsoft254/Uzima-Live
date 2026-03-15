@@ -1,9 +1,10 @@
+
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Volume2, X, PlayCircle } from "lucide-react";
+import { Volume2, X, Play, Pause, Square } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ResponseOverlayProps {
@@ -15,12 +16,35 @@ interface ResponseOverlayProps {
 
 export function ResponseOverlay({ text, audioUri, onClose, title }: ResponseOverlayProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     if (audioUri && audioRef.current) {
       audioRef.current.play().catch(() => {});
+      setIsPlaying(true);
     }
   }, [audioUri]);
+
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(() => {});
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const stopAudio = () => {
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+    setIsPlaying(false);
+  };
+
+  const handleAudioEnd = () => {
+    setIsPlaying(false);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/40 backdrop-blur-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-8">
@@ -30,7 +54,7 @@ export function ResponseOverlay({ text, audioUri, onClose, title }: ResponseOver
             <Volume2 className="w-5 h-5" />
             <h3 className="font-headline font-semibold">{title}</h3>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20">
+          <Button variant="ghost" size="icon" onClick={() => { stopAudio(); onClose(); }} className="text-white hover:bg-white/20">
             <X className="w-5 h-5" />
           </Button>
         </div>
@@ -40,16 +64,36 @@ export function ResponseOverlay({ text, audioUri, onClose, title }: ResponseOver
           </ScrollArea>
           
           {audioUri && (
-            <div className="p-4 border-t bg-muted/30 flex items-center gap-4">
-              <audio ref={audioRef} src={audioUri} className="hidden" />
-              <Button 
-                onClick={() => audioRef.current?.play()} 
-                variant="outline" 
-                className="w-full rounded-full gap-2 border-primary text-primary hover:bg-primary/10"
-              >
-                <PlayCircle className="w-5 h-5" />
-                Replay Audio
-              </Button>
+            <div className="p-4 border-t bg-muted/30 flex items-center justify-center gap-4">
+              <audio 
+                ref={audioRef} 
+                src={audioUri} 
+                className="hidden" 
+                onEnded={handleAudioEnd}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+              />
+              <div className="flex items-center gap-2 bg-white rounded-full p-1 shadow-sm border border-border">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={togglePlayPause}
+                  className="rounded-full h-10 w-10 text-primary hover:bg-primary/10"
+                >
+                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={stopAudio}
+                  className="rounded-full h-10 w-10 text-destructive hover:bg-destructive/10"
+                >
+                  <Square className="w-4 h-4 fill-current" />
+                </Button>
+              </div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest hidden sm:inline">
+                {isPlaying ? "Playing Advice" : "Audio Control"}
+              </span>
             </div>
           )}
         </CardContent>

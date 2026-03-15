@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, Bot, User, Volume2 } from "lucide-react";
+import { Loader2, Send, Bot, User, Volume2, Pause, Play, Square } from "lucide-react";
 import { getPersonalizedHealthAdvice } from "@/ai/flows/get-personalized-health-advice-flow";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,6 +25,9 @@ export function ChatAssistant({ language }: ChatAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
@@ -64,8 +68,10 @@ export function ChatAssistant({ language }: ChatAssistantProps) {
       
       // Auto-play audio if available
       if (aiMessage.audioUri && audioRef.current) {
+        setPlayingMessageId(aiMessage.id);
         audioRef.current.src = aiMessage.audioUri;
         audioRef.current.play().catch(() => {});
+        setIsAudioPlaying(true);
       }
     } catch (error: any) {
       toast({
@@ -78,16 +84,48 @@ export function ChatAssistant({ language }: ChatAssistantProps) {
     }
   };
 
-  const playAudio = (uri: string) => {
-    if (audioRef.current) {
+  const toggleAudio = (id: string, uri: string) => {
+    if (!audioRef.current) return;
+
+    if (playingMessageId === id) {
+      if (isAudioPlaying) {
+        audioRef.current.pause();
+        setIsAudioPlaying(false);
+      } else {
+        audioRef.current.play().catch(() => {});
+        setIsAudioPlaying(true);
+      }
+    } else {
+      setPlayingMessageId(id);
       audioRef.current.src = uri;
       audioRef.current.play().catch(() => {});
+      setIsAudioPlaying(true);
     }
+  };
+
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsAudioPlaying(false);
+      setPlayingMessageId(null);
+    }
+  };
+
+  const handleAudioEnd = () => {
+    setIsAudioPlaying(false);
+    setPlayingMessageId(null);
   };
 
   return (
     <div className="flex flex-col h-[500px] w-full bg-white/50 rounded-2xl border border-border overflow-hidden">
-      <audio ref={audioRef} className="hidden" />
+      <audio 
+        ref={audioRef} 
+        className="hidden" 
+        onEnded={handleAudioEnd}
+        onPlay={() => setIsAudioPlaying(true)}
+        onPause={() => setIsAudioPlaying(false)}
+      />
       
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="flex flex-col gap-4">
@@ -120,12 +158,25 @@ export function ChatAssistant({ language }: ChatAssistantProps) {
               )}>
                 <p className="text-sm leading-relaxed">{msg.text}</p>
                 {msg.audioUri && (
-                  <button 
-                    onClick={() => playAudio(msg.audioUri!)}
-                    className="absolute -right-2 -bottom-2 w-7 h-7 bg-white border border-border rounded-full flex items-center justify-center text-primary shadow-sm hover:bg-primary/5 transition-colors"
-                  >
-                    <Volume2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="absolute -right-2 -bottom-2 flex gap-1">
+                    <button 
+                      onClick={() => toggleAudio(msg.id, msg.audioUri!)}
+                      className={cn(
+                        "w-7 h-7 bg-white border border-border rounded-full flex items-center justify-center shadow-sm transition-colors",
+                        playingMessageId === msg.id && isAudioPlaying ? "text-primary border-primary animate-pulse" : "text-muted-foreground hover:text-primary"
+                      )}
+                    >
+                      {playingMessageId === msg.id && isAudioPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+                    </button>
+                    {playingMessageId === msg.id && (
+                      <button 
+                        onClick={stopAudio}
+                        className="w-7 h-7 bg-white border border-destructive/20 rounded-full flex items-center justify-center text-destructive shadow-sm hover:bg-destructive/5 transition-colors"
+                      >
+                        <Square className="w-2.5 h-2.5 fill-current" />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
