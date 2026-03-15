@@ -1,9 +1,8 @@
-
 'use server';
 /**
- * @fileOverview A Genkit flow for interpreting health documents from images and providing audible explanations.
+ * @fileOverview A Genkit flow for interpreting health documents (images or PDFs) and providing audible explanations.
  *
- * - interpretHealthDocument - A function that handles the interpretation of a health document from an image.
+ * - interpretHealthDocument - A function that handles the interpretation of a health document.
  * - InterpretHealthDocumentInput - The input type for the interpretHealthDocument function.
  * - InterpretHealthDocumentOutput - The return type for the interpretHealthDocument function.
  */
@@ -15,10 +14,10 @@ import * as wav from 'wav';
 import {Buffer} from 'buffer';
 
 const InterpretHealthDocumentInputSchema = z.object({
-  photoDataUri: z
+  documentDataUri: z
     .string()
     .describe(
-      "A photo of a health document (e.g., prescription, health card), as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "A photo or PDF of a health document, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
   targetLanguage: z
     .enum(['English', 'Swahili'])
@@ -89,11 +88,11 @@ const interpretDocumentPrompt = ai.definePrompt({
   config: {
     model: 'googleai/gemini-1.5-flash-latest',
   },
-  prompt: `You are an AI assistant designed to help caregivers understand health documents.
-Document Photo: {{media url=photoDataUri}}
+  prompt: `You are an AI assistant designed to help caregivers understand health documents (images or PDFs).
+Document: {{media url=documentDataUri}}
 Target Language: {{{targetLanguage}}}
 
-Identify document type and extract key info. Provide a simple explanation in {{{targetLanguage}}}.`,
+Identify document type (e.g. prescription, lab result, health ID) and extract key information. Provide a simple, empathetic explanation in {{{targetLanguage}}}. Focus on instructions for the caregiver.`,
 });
 
 const interpretHealthDocumentFlow = ai.defineFlow(
@@ -104,7 +103,7 @@ const interpretHealthDocumentFlow = ai.defineFlow(
   },
   async input => {
     const {output: promptOutput} = await interpretDocumentPrompt({
-      photoDataUri: input.photoDataUri,
+      documentDataUri: input.documentDataUri,
       targetLanguage: input.targetLanguage,
     });
     const explanationText = promptOutput?.explanation || 'Could not interpret the document.';
@@ -112,7 +111,7 @@ const interpretHealthDocumentFlow = ai.defineFlow(
     const {media} = await ai.generate({
       model: googleAI.model('gemini-2.5-flash-preview-tts'),
       config: {
-        responseModalalities: ['AUDIO'],
+        responseModalities: ['AUDIO'],
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {voiceName: 'Algenib'},
@@ -122,7 +121,7 @@ const interpretHealthDocumentFlow = ai.defineFlow(
       prompt: explanationText,
     });
 
-    if (!media) {
+    if (!media || !media.url) {
       throw new Error('No audio media returned from TTS model.');
     }
 
