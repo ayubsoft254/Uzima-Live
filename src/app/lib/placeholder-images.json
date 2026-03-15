@@ -1,0 +1,16 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero-health",
+      "description": "A caring healthcare professional or community health scene",
+      "imageUrl": "https://picsum.photos/seed/health1/1200/800",
+      "imageHint": "community health"
+    },
+    {
+      "id": "scan-demo",
+      "description": "Hand holding a medical document near a phone",
+      "imageUrl": "https://picsum.photos/seed/medical2/600/400",
+      "imageHint": "medical document"
+    }
+  ]
+}
