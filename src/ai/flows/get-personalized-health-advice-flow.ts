@@ -11,8 +11,11 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import * as wav from 'wav';
+import { Buffer } from 'buffer';
 
-// Helper function for PCM to WAV conversion
+/**
+ * Helper function for PCM to WAV conversion.
+ */
 async function toWav(
   pcmData: Buffer,
   channels = 1,
@@ -20,23 +23,29 @@ async function toWav(
   sampleWidth = 2
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const writer = new wav.Writer({
-      channels,
-      sampleRate: rate,
-      bitDepth: sampleWidth * 8,
-    });
+    try {
+      const writer = new wav.Writer({
+        channels,
+        sampleRate: rate,
+        bitDepth: sampleWidth * 8,
+      });
 
-    let bufs: Buffer[] = [];
-    writer.on('error', reject);
-    writer.on('data', function (d) {
-      bufs.push(d);
-    });
-    writer.on('end', function () {
-      resolve(Buffer.concat(bufs).toString('base64'));
-    });
+      const bufs: Buffer[] = [];
+      writer.on('error', (err) => {
+        reject(err);
+      });
+      writer.on('data', (d) => {
+        bufs.push(d);
+      });
+      writer.on('end', () => {
+        resolve(Buffer.concat(bufs).toString('base64'));
+      });
 
-    writer.write(pcmData);
-    writer.end();
+      writer.write(pcmData);
+      writer.end();
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 

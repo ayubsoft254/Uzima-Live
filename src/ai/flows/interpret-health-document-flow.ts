@@ -60,7 +60,6 @@ async function toWav(
 
       const bufs: Buffer[] = [];
       writer.on('error', (err) => {
-        console.error('WAV Writer Error:', err);
         reject(err);
       });
       writer.on('data', (d) => {
@@ -99,7 +98,7 @@ Your tasks:
 4. If it's a prescription, emphasize dosage and frequency.
 5. If it's a lab report, explain abnormal results simply without causing panic.
 
-IMPORTANT: Respond ONLY in {{{targetLanguage}}} following the output schema.`,
+IMPORTANT: Respond ONLY in {{{targetLanguage}}} following the output schema. Ensure you interpret all visible text accurately.`,
 });
 
 const interpretHealthDocumentFlow = ai.defineFlow(
