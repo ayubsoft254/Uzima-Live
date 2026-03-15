@@ -7,11 +7,11 @@
  * - InterpretHealthDocumentOutput - The return type for the interpretHealthDocument function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import * as wav from 'wav';
-import {Buffer} from 'buffer';
+import { Buffer } from 'buffer';
 
 const InterpretHealthDocumentInputSchema = z.object({
   documentDataUri: z
@@ -41,13 +41,9 @@ export type InterpretHealthDocumentOutput = z.infer<
   typeof InterpretHealthDocumentOutputSchema
 >;
 
-export async function interpretHealthDocument(
-  input: InterpretHealthDocumentInput
-): Promise<InterpretHealthDocumentOutput> {
-  return interpretHealthDocumentFlow(input);
-}
-
-// Helper function to convert PCM audio to WAV format
+/**
+ * Helper function to convert PCM audio to WAV format.
+ */
 async function toWav(
   pcmData: Buffer,
   channels = 1,
@@ -55,23 +51,30 @@ async function toWav(
   sampleWidth = 2
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const writer = new wav.Writer({
-      channels,
-      sampleRate: rate,
-      bitDepth: sampleWidth * 8,
-    });
+    try {
+      const writer = new wav.Writer({
+        channels,
+        sampleRate: rate,
+        bitDepth: sampleWidth * 8,
+      });
 
-    const bufs: Buffer[] = [];
-    writer.on('error', reject);
-    writer.on('data', function (d) {
-      bufs.push(d);
-    });
-    writer.on('end', function () {
-      resolve(Buffer.concat(bufs).toString('base64'));
-    });
+      const bufs: Buffer[] = [];
+      writer.on('error', (err) => {
+        console.error('WAV Writer Error:', err);
+        reject(err);
+      });
+      writer.on('data', (d) => {
+        bufs.push(d);
+      });
+      writer.on('end', () => {
+        resolve(Buffer.concat(bufs).toString('base64'));
+      });
 
-    writer.write(pcmData);
-    writer.end();
+      writer.write(pcmData);
+      writer.end();
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
@@ -85,14 +88,18 @@ const interpretDocumentPrompt = ai.definePrompt({
       explanation: z.string().describe('A clear and simple explanation of the document content.'),
     }),
   },
-  config: {
-    model: 'googleai/gemini-1.5-flash-latest',
-  },
-  prompt: `You are an AI assistant designed to help caregivers understand health documents (images or PDFs).
-Document: {{media url=documentDataUri}}
+  prompt: `You are a medical interpretation specialist for Uzima Live. 
+The user has provided a health document (image or PDF): {{media url=documentDataUri}}
 Target Language: {{{targetLanguage}}}
 
-Identify document type (e.g. prescription, lab result, health ID) and extract key information. Provide a simple, empathetic explanation in {{{targetLanguage}}}. Focus on instructions for the caregiver.`,
+Your tasks:
+1. Carefully analyze the text and structure of the document.
+2. Identify the document type (e.g., prescription, lab report, health ID, referral letter).
+3. Summarize the key findings or instructions in simple, empathetic language for a caregiver.
+4. If it's a prescription, emphasize dosage and frequency.
+5. If it's a lab report, explain abnormal results simply without causing panic.
+
+IMPORTANT: Respond ONLY in {{{targetLanguage}}} following the output schema.`,
 });
 
 const interpretHealthDocumentFlow = ai.defineFlow(
@@ -101,20 +108,17 @@ const interpretHealthDocumentFlow = ai.defineFlow(
     inputSchema: InterpretHealthDocumentInputSchema,
     outputSchema: InterpretHealthDocumentOutputSchema,
   },
-  async input => {
-    const {output: promptOutput} = await interpretDocumentPrompt({
-      documentDataUri: input.documentDataUri,
-      targetLanguage: input.targetLanguage,
-    });
-    const explanationText = promptOutput?.explanation || 'Could not interpret the document.';
+  async (input) => {
+    const { output: promptOutput } = await interpretDocumentPrompt(input);
+    const explanationText = promptOutput?.explanation || 'Uzima Live was unable to interpret this document clearly. Please ensure the scan is readable and try again.';
 
-    const {media} = await ai.generate({
+    const { media } = await ai.generate({
       model: googleAI.model('gemini-2.5-flash-preview-tts'),
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: {voiceName: 'Algenib'},
+            prebuiltVoiceConfig: { voiceName: 'Algenib' },
           },
         },
       },
@@ -138,3 +142,9 @@ const interpretHealthDocumentFlow = ai.defineFlow(
     };
   }
 );
+
+export async function interpretHealthDocument(
+  input: InterpretHealthDocumentInput
+): Promise<InterpretHealthDocumentOutput> {
+  return interpretHealthDocumentFlow(input);
+}

@@ -47,7 +47,6 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
       };
       getCameraPermission();
     } else {
-      // Stop camera stream if active
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
@@ -59,10 +58,27 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file size (Genkit/Gemini limit)
+      if (file.size > 20 * 1024 * 1024) {
+        toast({
+          variant: "destructive",
+          title: "File Too Large",
+          description: "Please upload a file smaller than 20MB.",
+        });
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setCapturedDataUri(reader.result as string);
         setIsCameraActive(false);
+      };
+      reader.onerror = () => {
+        toast({
+          variant: "destructive",
+          title: "Upload Error",
+          description: "Failed to read the file. Please try again.",
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -97,11 +113,12 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
         text: result.explanationText,
         audio: result.explanationAudioDataUri,
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Interpretation Error:", error);
       toast({
         variant: "destructive",
         title: "Processing Failed",
-        description: "Could not interpret the document. Please ensure it's clear and try again.",
+        description: error.message || "Could not interpret the document. Please ensure it's clear and try again.",
       });
     } finally {
       setIsProcessing(false);
@@ -109,7 +126,6 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
   };
 
   const reset = () => {
-    // Stop all active tracks
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
@@ -119,13 +135,12 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
     setIsCameraActive(false);
   };
 
-  // Security note: We clear the data after closing the overlay
   const handleCloseResponse = () => {
     setResponse(null);
-    setCapturedDataUri(null); // Purge sensitive document from memory
+    setCapturedDataUri(null); // Securely purge document from client state
     toast({
       title: "Securely Cleared",
-      description: "Document data has been removed from session memory for your privacy.",
+      description: "Document data has been removed from memory for your privacy.",
     });
   };
 
@@ -135,7 +150,6 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
     <div className="flex flex-col items-center gap-6 w-full max-w-md mx-auto">
       <div className="w-full aspect-[3/4] rounded-2xl border-2 border-dashed border-primary/30 overflow-hidden bg-white/50 relative flex items-center justify-center shadow-inner">
         
-        {/* Live Camera View */}
         {isCameraActive && (
           <div className="absolute inset-0 z-10 bg-black">
             <video 
@@ -153,7 +167,6 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
           </div>
         )}
 
-        {/* Captured Preview */}
         {capturedDataUri ? (
           <div className="relative w-full h-full bg-muted">
             {isPdf ? (
@@ -197,7 +210,6 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
           </div>
         )}
 
-        {/* Permission Alerts */}
         {isCameraActive && hasCameraPermission === false && (
           <div className="absolute inset-0 z-20 bg-background/95 flex items-center p-4">
              <Alert variant="destructive">
