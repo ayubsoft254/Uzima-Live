@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, Loader2 } from "lucide-react";
 import { getPersonalizedHealthAdvice } from "@/ai/flows/get-personalized-health-advice-flow";
@@ -44,9 +44,14 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
     recognition.onerror = (event: any) => {
-      console.error(event.error);
       setIsListening(false);
-      toast({ variant: "destructive", title: "Recognition Error", description: event.error });
+      if (event.error !== 'aborted' && event.error !== 'no-speech') {
+        toast({ 
+          variant: "destructive", 
+          title: "Recognition Error", 
+          description: event.error 
+        });
+      }
     };
 
     recognition.onresult = async (event: any) => {
@@ -75,7 +80,6 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
         audio: result.adviceAudioDataUri,
       });
     } catch (error) {
-      console.error(error);
       toast({
         variant: "destructive",
         title: "Processing Failed",

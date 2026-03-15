@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, RefreshCcw, Loader2, FileText, Upload } from "lucide-react";
+import { Camera, RefreshCcw, Loader2, FileText } from "lucide-react";
 import { interpretHealthDocument } from "@/ai/flows/interpret-health-document-flow";
 import { useToast } from "@/hooks/use-toast";
 import { ResponseOverlay } from "./ResponseOverlay";
@@ -13,7 +13,6 @@ interface DocumentScannerProps {
 }
 
 export function DocumentScanner({ language }: DocumentScannerProps) {
-  const [isCapturing, setIsCapturing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [response, setResponse] = useState<{ text: string; audio: string | null } | null>(null);
@@ -45,7 +44,6 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
         audio: result.explanationAudioDataUri,
       });
     } catch (error) {
-      console.error(error);
       toast({
         variant: "destructive",
         title: "Processing Failed",

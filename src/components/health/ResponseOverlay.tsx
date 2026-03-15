@@ -18,7 +18,7 @@ export function ResponseOverlay({ text, audioUri, onClose, title }: ResponseOver
 
   useEffect(() => {
     if (audioUri && audioRef.current) {
-      audioRef.current.play().catch(e => console.error("Audio autoplay failed:", e));
+      audioRef.current.play().catch(() => {});
     }
   }, [audioUri]);
 
