@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, Loader2 } from "lucide-react";
 import { getPersonalizedHealthAdvice } from "@/ai/flows/get-personalized-health-advice-flow";
@@ -15,7 +16,17 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [response, setResponse] = useState<{ text: string; audio: string | null } | null>(null);
+  const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
+
+  // Cleanup recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   const toggleListening = () => {
     if (isListening) {
@@ -37,19 +48,22 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
 
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).speechRecognition;
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    
     recognition.lang = language === 'English' ? 'en-US' : 'sw-KE';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
+    
     recognition.onerror = (event: any) => {
       setIsListening(false);
       if (event.error !== 'aborted' && event.error !== 'no-speech') {
         toast({ 
           variant: "destructive", 
-          title: "Recognition Error", 
-          description: event.error 
+          title: "Speech Error", 
+          description: `Error: ${event.error}. Please try again.` 
         });
       }
     };
@@ -57,14 +71,25 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
     recognition.onresult = async (event: any) => {
       const transcript = event.results[0][0].transcript;
       if (transcript) {
+        toast({
+          title: "Heard you:",
+          description: `"${transcript}"`,
+        });
         handleQuery(transcript);
       }
     };
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error("Failed to start recognition", e);
+    }
   };
 
   const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
     setIsListening(false);
   };
 
@@ -79,11 +104,11 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
         text: result.adviceText,
         audio: result.adviceAudioDataUri,
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Processing Failed",
-        description: "Could not generate advice. Please try again.",
+        title: "Assistant Error",
+        description: error.message || "Could not generate advice. Please try again.",
       });
     } finally {
       setIsProcessing(false);
@@ -119,7 +144,7 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
         </h2>
         <p className="text-muted-foreground max-w-xs mx-auto">
           {isListening 
-            ? "I'm listening to your health concern. Speak clearly into your microphone." 
+            ? "I'm listening to your health concern. Speak clearly." 
             : "Tell me your symptoms or health questions in your preferred language."}
         </p>
       </div>

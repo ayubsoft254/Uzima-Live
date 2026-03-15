@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for interpreting health documents from images and providing audible explanations.
@@ -61,7 +62,7 @@ async function toWav(
       bitDepth: sampleWidth * 8,
     });
 
-    const bufs: any[] = [];
+    const bufs: Buffer[] = [];
     writer.on('error', reject);
     writer.on('data', function (d) {
       bufs.push(d);
@@ -88,7 +89,11 @@ const interpretDocumentPrompt = ai.definePrompt({
   config: {
     model: 'googleai/gemini-1.5-flash-latest',
   },
-  prompt: `You are an AI assistant designed to help caregivers understand health documents.\nYour task is to:\n1. Identify the type of document.\n2. Extract all key information from the document (e.g., patient name, date, medication, dosage, instructions for prescriptions; child's name, birth date, vaccination records for health cards).\n3. Provide a clear, simple, and easy-to-understand explanation of the document's content, highlighting important details and any necessary actions.\n4. Ensure the explanation is provided in the specified target language: "{{{targetLanguage}}}".\n\nDocument Photo: {{media url=photoDataUri}}\n\nProvide the explanation in the target language.`,
+  prompt: `You are an AI assistant designed to help caregivers understand health documents.
+Document Photo: {{media url=photoDataUri}}
+Target Language: {{{targetLanguage}}}
+
+Identify document type and extract key info. Provide a simple explanation in {{{targetLanguage}}}.`,
 });
 
 const interpretHealthDocumentFlow = ai.defineFlow(
@@ -107,7 +112,7 @@ const interpretHealthDocumentFlow = ai.defineFlow(
     const {media} = await ai.generate({
       model: googleAI.model('gemini-2.5-flash-preview-tts'),
       config: {
-        responseModalities: ['AUDIO'],
+        responseModalalities: ['AUDIO'],
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {voiceName: 'Algenib'},
