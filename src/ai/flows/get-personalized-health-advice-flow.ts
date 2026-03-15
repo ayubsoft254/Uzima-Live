@@ -1,9 +1,8 @@
-
 'use server';
 /**
- * @fileOverview A Genkit flow for generating personalized health advice based on spoken queries and community health data.
+ * @fileOverview A Genkit flow for generating personalized health advice based on text or spoken queries and community health data.
  *
- * - getPersonalizedHealthAdvice - A function that handles the process of understanding a spoken query, fetching community data, generating advice, and converting it to speech.
+ * - getPersonalizedHealthAdvice - A function that handles the process of understanding a query, fetching community data, generating advice, and converting it to speech.
  * - GetPersonalizedHealthAdviceInput - The input type for the getPersonalizedHealthAdvice function.
  * - GetPersonalizedHealthAdviceOutput - The return type for the getPersonalizedHealthAdvice function.
  */
@@ -42,7 +41,7 @@ async function toWav(
 }
 
 const GetPersonalizedHealthAdviceInputSchema = z.object({
-  spokenQuery: z.string().describe('The user\'s spoken health concern or question.'),
+  query: z.string().describe("The user's health concern or question (text or transcript)."),
   language: z.enum(['English', 'Swahili']).describe('The desired output language for the advice.'),
 });
 export type GetPersonalizedHealthAdviceInput = z.infer<typeof GetPersonalizedHealthAdviceInputSchema>;
@@ -65,8 +64,6 @@ const getCommunityHealthData = ai.defineTool(
     }),
   },
   async (input) => {
-    console.log(`Tool: getCommunityHealthData called with query: "${input.query}"`);
-    await new Promise(resolve => setTimeout(resolve, 500));
     if (input.query.toLowerCase().includes('malaria')) {
       return { communityHealthData: 'Recent community data shows an increase in malaria cases. Symptoms include fever and chills. Local clinics report a 20% rise.' };
     } else if (input.query.toLowerCase().includes('nutrition')) {
@@ -81,10 +78,10 @@ const getPersonalizedHealthAdvicePrompt = ai.definePrompt({
   tools: [getCommunityHealthData],
   input: { schema: GetPersonalizedHealthAdviceInputSchema },
   output: { schema: z.object({ adviceText: z.string() }) },
-  prompt: `You are Uzima Live, a helpful health assistant.
-The user has a health concern: "{{{spokenQuery}}}"
-Your goal is to provide personalized advice in {{{language}}}.
-Use the 'getCommunityHealthData' tool to check for local trends if relevant.
+  prompt: `You are Uzima Live, a helpful health assistant for the Uzima Mesh network.
+The user has a health concern: "{{{query}}}"
+Your goal is to provide personalized, supportive, and medically grounded advice in {{{language}}}.
+Use the 'getCommunityHealthData' tool to check for local trends if the user's query relates to symptoms or public health topics.
 Return your response as a JSON object with an 'adviceText' field containing the complete advice in {{{language}}}.`,
 });
 

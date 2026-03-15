@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -19,7 +18,6 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
   const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
 
-  // Cleanup recognition on unmount
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
@@ -97,7 +95,7 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
     setIsProcessing(true);
     try {
       const result = await getPersonalizedHealthAdvice({
-        spokenQuery: query,
+        query,
         language,
       });
       setResponse({

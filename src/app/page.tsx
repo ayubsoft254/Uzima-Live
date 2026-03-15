@@ -5,7 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LanguageSelector } from "@/components/health/LanguageSelector";
 import { VoiceAssistant } from "@/components/health/VoiceAssistant";
 import { DocumentScanner } from "@/components/health/DocumentScanner";
-import { HeartPulse, Mic, ScanEye, Info } from "lucide-react";
+import { ChatAssistant } from "@/components/health/ChatAssistant";
+import { HeartPulse, Mic, ScanEye, Info, MessageSquare } from "lucide-react";
 
 export default function Home() {
   const [language, setLanguage] = useState<'English' | 'Swahili'>('English');
@@ -33,19 +34,27 @@ export default function Home() {
       {/* Main Mode Selector */}
       <main className="flex-1 flex flex-col">
         <Tabs defaultValue="voice" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-14 p-1 bg-white border border-border rounded-2xl mb-8">
+          <TabsList className="grid w-full grid-cols-3 h-14 p-1 bg-white border border-border rounded-2xl mb-8">
             <TabsTrigger value="voice" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white gap-2 transition-all duration-300">
-              <Mic className="w-5 h-5" />
-              Voice Agent
+              <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Voice</span>
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white gap-2 transition-all duration-300">
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Chat</span>
             </TabsTrigger>
             <TabsTrigger value="vision" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white gap-2 transition-all duration-300">
-              <ScanEye className="w-5 h-5" />
-              Scan Records
+              <ScanEye className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Scan</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="voice" className="animate-in fade-in slide-in-from-left-4 duration-500">
             <VoiceAssistant language={language} />
+          </TabsContent>
+
+          <TabsContent value="chat" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ChatAssistant language={language} />
           </TabsContent>
 
           <TabsContent value="vision" className="animate-in fade-in slide-in-from-right-4 duration-500">
@@ -63,9 +72,9 @@ export default function Home() {
           <div className="space-y-1">
             <h4 className="font-headline font-bold text-sm">How it works</h4>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Uzima Live uses Gemini Multimodal AI to understand your voice and read health documents. 
+              Uzima Live uses Gemini Multimodal AI to understand your voice, read chat messages, and scan health documents. 
               Our guidance is grounded in the Uzima Mesh health network and switches seamlessly between 
-              English and Swahili to provide community-specific advice.
+              English and Swahili.
             </p>
           </div>
         </div>
