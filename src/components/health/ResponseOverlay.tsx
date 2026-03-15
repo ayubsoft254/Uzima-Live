@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -47,24 +46,26 @@ export function ResponseOverlay({ text, audioUri, onClose, title }: ResponseOver
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/40 backdrop-blur-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-8">
-      <Card className="w-full max-w-2xl mb-4 overflow-hidden shadow-2xl border-primary/20">
-        <div className="bg-primary px-6 py-4 flex items-center justify-between text-white">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm transition-all duration-300 animate-in fade-in">
+      <Card className="w-full max-w-2xl mb-0 sm:mb-4 overflow-hidden shadow-2xl border-primary/10 rounded-t-3xl sm:rounded-3xl animate-in slide-in-from-bottom-full duration-500">
+        <div className="bg-primary px-6 py-4 flex items-center justify-between text-white shadow-md">
           <div className="flex items-center gap-2">
-            <Volume2 className="w-5 h-5" />
-            <h3 className="font-headline font-semibold">{title}</h3>
+            <div className="p-1.5 bg-white/20 rounded-lg">
+              <Volume2 className="w-4 h-4" />
+            </div>
+            <h3 className="font-headline font-black text-sm uppercase tracking-wider">{title}</h3>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => { stopAudio(); onClose(); }} className="text-white hover:bg-white/20">
+          <Button variant="ghost" size="icon" onClick={() => { stopAudio(); onClose(); }} className="text-white hover:bg-white/20 rounded-full h-9 w-9">
             <X className="w-5 h-5" />
           </Button>
         </div>
-        <CardContent className="p-0">
-          <ScrollArea className="max-h-[60vh] p-6">
-            <p className="text-lg leading-relaxed whitespace-pre-wrap">{text}</p>
+        <CardContent className="p-0 bg-white">
+          <ScrollArea className="h-[40vh] sm:h-auto sm:max-h-[60vh] p-6 sm:p-8">
+            <p className="text-base sm:text-lg leading-relaxed whitespace-pre-wrap font-medium text-foreground/90">{text}</p>
           </ScrollArea>
           
           {audioUri && (
-            <div className="p-4 border-t bg-muted/30 flex items-center justify-center gap-4">
+            <div className="p-6 border-t bg-muted/5 flex flex-col sm:flex-row items-center justify-center gap-4">
               <audio 
                 ref={audioRef} 
                 src={audioUri} 
@@ -73,27 +74,30 @@ export function ResponseOverlay({ text, audioUri, onClose, title }: ResponseOver
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
               />
-              <div className="flex items-center gap-2 bg-white rounded-full p-1 shadow-sm border border-border">
+              <div className="flex items-center gap-3 bg-white rounded-full p-2 shadow-xl border border-border/50">
                 <Button 
-                  variant="ghost" 
+                  variant="default" 
                   size="icon" 
                   onClick={togglePlayPause}
-                  className="rounded-full h-10 w-10 text-primary hover:bg-primary/10"
+                  className="rounded-full h-12 w-12 text-white shadow-lg active:scale-90 transition-all"
                 >
-                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                  {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
                 </Button>
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="icon" 
                   onClick={stopAudio}
-                  className="rounded-full h-10 w-10 text-destructive hover:bg-destructive/10"
+                  className="rounded-full h-12 w-12 text-destructive border-destructive/10 hover:bg-destructive/5 shadow-sm active:scale-90 transition-all"
                 >
                   <Square className="w-4 h-4 fill-current" />
                 </Button>
               </div>
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest hidden sm:inline">
-                {isPlaying ? "Playing Advice" : "Audio Control"}
-              </span>
+              <div className="flex flex-col items-center sm:items-start gap-0.5">
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  {isPlaying ? "Audio playing" : "Audio control"}
+                </span>
+                <span className="text-[9px] text-primary font-bold uppercase tracking-tighter">Uzima Mesh TTS Engine</span>
+              </div>
             </div>
           )}
         </CardContent>

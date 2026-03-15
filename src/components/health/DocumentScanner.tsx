@@ -58,7 +58,6 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file size (Genkit/Gemini limit)
       if (file.size > 20 * 1024 * 1024) {
         toast({
           variant: "destructive",
@@ -137,7 +136,7 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
 
   const handleCloseResponse = () => {
     setResponse(null);
-    setCapturedDataUri(null); // Securely purge document from client state
+    setCapturedDataUri(null); 
     toast({
       title: "Securely Cleared",
       description: "Document data has been removed from memory for your privacy.",
@@ -147,8 +146,8 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
   const isPdf = capturedDataUri?.startsWith('data:application/pdf');
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-md mx-auto">
-      <div className="w-full aspect-[3/4] rounded-2xl border-2 border-dashed border-primary/30 overflow-hidden bg-white/50 relative flex items-center justify-center shadow-inner">
+    <div className="flex flex-col items-center gap-4 sm:gap-6 w-full max-w-md mx-auto h-full overflow-y-auto pb-4">
+      <div className="w-full aspect-[3/4] sm:aspect-[4/3] rounded-3xl border-2 border-dashed border-primary/20 overflow-hidden bg-white/40 relative flex items-center justify-center shadow-inner group transition-all">
         
         {isCameraActive && (
           <div className="absolute inset-0 z-10 bg-black">
@@ -159,41 +158,49 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
               muted 
               playsInline
             />
-            <div className="absolute bottom-6 left-0 right-0 flex justify-center">
-              <Button onClick={takePhoto} className="w-16 h-16 rounded-full bg-white border-4 border-primary p-0">
-                <div className="w-12 h-12 rounded-full bg-primary" />
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center">
+              <Button onClick={takePhoto} className="w-20 h-20 rounded-full bg-white border-8 border-primary/20 p-0 shadow-2xl active:scale-95 transition-all">
+                <div className="w-14 h-14 rounded-full bg-primary" />
               </Button>
             </div>
           </div>
         )}
 
         {capturedDataUri ? (
-          <div className="relative w-full h-full bg-muted">
+          <div className="relative w-full h-full bg-muted/20">
             {isPdf ? (
-              <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-                <FileText className="w-20 h-20 text-primary opacity-50" />
-                <p className="font-medium">PDF Document Ready</p>
+              <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground animate-in zoom-in-95">
+                <div className="w-24 h-24 rounded-full bg-primary/5 flex items-center justify-center">
+                  <FileText className="w-12 h-12 text-primary opacity-50" />
+                </div>
+                <p className="font-headline font-bold text-lg">PDF Document Ready</p>
               </div>
             ) : (
               <Image 
                 src={capturedDataUri} 
                 alt="Document preview" 
                 fill 
-                className="object-contain"
+                className="object-contain p-4"
               />
             )}
             
             {isProcessing && (
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-white gap-3 z-20">
-                <Loader2 className="w-12 h-12 animate-spin text-primary" />
-                <p className="font-bold tracking-tight">Uzima Mesh AI Analyzing...</p>
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center text-white gap-4 z-20 transition-all">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+                  <Loader2 className="w-16 h-16 animate-spin text-primary relative z-10" />
+                </div>
+                <div className="text-center">
+                  <p className="font-headline font-black text-xl tracking-tight">Analyzing Document</p>
+                  <p className="text-[10px] uppercase tracking-widest opacity-70 font-bold mt-1">Uzima Mesh AI Engine</p>
+                </div>
               </div>
             )}
 
             <Button 
               size="icon" 
               variant="destructive" 
-              className="absolute top-4 right-4 rounded-full shadow-lg"
+              className="absolute top-4 right-4 rounded-full shadow-xl z-30"
               onClick={reset}
               disabled={isProcessing}
             >
@@ -201,24 +208,24 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
             </Button>
           </div>
         ) : !isCameraActive && (
-          <div className="flex flex-col items-center gap-4 text-muted-foreground p-8 text-center animate-in fade-in zoom-in">
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2 shadow-sm">
+          <div className="flex flex-col items-center gap-4 text-muted-foreground p-8 text-center animate-in fade-in zoom-in duration-300">
+            <div className="w-24 h-24 rounded-full bg-primary/5 flex items-center justify-center text-primary mb-2 shadow-sm ring-1 ring-primary/10">
               <Camera className="w-10 h-10" />
             </div>
-            <p className="font-headline font-bold text-xl text-foreground">Scan or Upload</p>
-            <p className="text-sm px-4">Interpret prescriptions, reports, or IDs instantly in English or Swahili.</p>
+            <h3 className="font-headline font-black text-2xl text-foreground tracking-tight">Scan or Upload</h3>
+            <p className="text-xs px-4 leading-relaxed max-w-[240px]">Interpret prescriptions, reports, or IDs instantly in English or Swahili.</p>
           </div>
         )}
 
         {isCameraActive && hasCameraPermission === false && (
           <div className="absolute inset-0 z-20 bg-background/95 flex items-center p-4">
-             <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Camera Access Required</AlertTitle>
-                <AlertDescription>
+             <Alert variant="destructive" className="border-none shadow-none">
+                <AlertCircle className="h-5 w-5" />
+                <AlertTitle className="font-headline font-bold">Camera Access Required</AlertTitle>
+                <AlertDescription className="text-xs leading-relaxed mt-1">
                   Please allow camera access to use the live scanner. You can still upload files.
                 </AlertDescription>
-                <Button onClick={() => setIsCameraActive(false)} variant="outline" size="sm" className="mt-4 w-full">
+                <Button onClick={() => setIsCameraActive(false)} variant="outline" size="sm" className="mt-4 w-full rounded-xl border-destructive/20 hover:bg-destructive/5 text-destructive">
                   Use File Upload
                 </Button>
             </Alert>
@@ -228,50 +235,50 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
 
       <canvas ref={canvasRef} className="hidden" />
 
-      <div className="grid grid-cols-2 gap-4 w-full">
+      <div className="flex flex-col gap-3 w-full">
         {!capturedDataUri ? (
-          <>
+          <div className="grid grid-cols-2 gap-3 w-full">
             <Button 
-              className="h-16 rounded-2xl text-lg gap-2 shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="h-14 sm:h-16 rounded-2xl text-base sm:text-lg gap-2 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
               onClick={() => setIsCameraActive(true)}
               disabled={isCameraActive}
             >
-              <Camera className="w-6 h-6" />
-              Scan Now
+              <Camera className="w-5 h-5" />
+              Scan
             </Button>
             <Button 
               variant="outline"
-              className="h-16 rounded-2xl text-lg gap-2 border-primary text-primary hover:bg-primary/5 shadow-sm"
+              className="h-14 sm:h-16 rounded-2xl text-base sm:text-lg gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-md"
               onClick={() => fileInputRef.current?.click()}
             >
-              <FileUp className="w-6 h-6" />
-              Upload PDF
+              <FileUp className="w-5 h-5" />
+              Upload
             </Button>
-          </>
+          </div>
         ) : (
-          <>
+          <div className="grid grid-cols-2 gap-3 w-full">
             <Button 
               variant="outline" 
-              className="h-16 rounded-2xl gap-2 border-primary text-primary hover:bg-primary/5"
+              className="h-14 sm:h-16 rounded-2xl gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-md"
               onClick={reset}
               disabled={isProcessing}
             >
-              <RefreshCcw className="w-5 h-5" />
+              <RefreshCcw className="w-4 h-4" />
               Retake
             </Button>
             <Button 
-              className="h-16 rounded-2xl text-lg gap-2 shadow-lg"
+              className="h-14 sm:h-16 rounded-2xl text-base sm:text-lg gap-2 shadow-xl"
               onClick={processDocument}
               disabled={isProcessing}
             >
               {isProcessing ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <FileText className="w-5 h-5" />
+                <FileText className="w-4 h-4" />
               )}
               {isProcessing ? "Reading..." : "Interpret"}
             </Button>
-          </>
+          </div>
         )}
       </div>
 
@@ -283,8 +290,8 @@ export function DocumentScanner({ language }: DocumentScannerProps) {
         onChange={handleFileUpload}
       />
 
-      <p className="text-[10px] text-muted-foreground text-center italic mt-2">
-        Privacy First: Documents are processed securely and cleared after viewing.
+      <p className="text-[10px] text-muted-foreground text-center font-medium italic mt-2 uppercase tracking-tight">
+        Privacy First: Documents are processed securely and purged.
       </p>
 
       {response && (
