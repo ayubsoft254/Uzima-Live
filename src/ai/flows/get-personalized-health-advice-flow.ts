@@ -1,50 +1,14 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for generating personalized health advice based on text or spoken queries and community health data.
+ * @fileOverview A Genkit flow for generating personalized health advice.
+ * Version: v3 (Refreshed for Action ID stability)
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import * as wav from 'wav';
+import { toWav } from '@/lib/audio-utils';
 import { Buffer } from 'buffer';
-
-/**
- * Helper function for PCM to WAV conversion.
- * Refactored for better stability in Next.js Server Actions.
- */
-async function toWav(
-  pcmData: Buffer,
-  channels = 1,
-  rate = 24000,
-  sampleWidth = 2
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    try {
-      const WriterClass = (wav as any).Writer || (wav as any).default?.Writer;
-      
-      if (!WriterClass) {
-        return reject(new Error('WAV Writer class not found.'));
-      }
-
-      const writer = new WriterClass({
-        channels,
-        sampleRate: rate,
-        bitDepth: sampleWidth * 8,
-      });
-
-      const bufs: Buffer[] = [];
-      writer.on('error', (err: Error) => reject(err));
-      writer.on('data', (d: Buffer) => bufs.push(d));
-      writer.on('end', () => resolve(Buffer.concat(bufs).toString('base64')));
-
-      writer.write(pcmData);
-      writer.end();
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
 
 const GetPersonalizedHealthAdviceInputSchema = z.object({
   query: z.string().describe("The user's health concern or question."),
@@ -74,7 +38,7 @@ const getCommunityHealthData = ai.defineTool(
 );
 
 const advicePrompt = ai.definePrompt({
-  name: 'getPersonalizedHealthAdvicePrompt',
+  name: 'getPersonalizedHealthAdvicePromptV3',
   tools: [getCommunityHealthData],
   input: { schema: GetPersonalizedHealthAdviceInputSchema },
   output: { schema: z.object({ adviceText: z.string() }) },
@@ -86,7 +50,7 @@ Check community trends using tools. Return advice in 'adviceText'.`,
 
 const getPersonalizedHealthAdviceFlow = ai.defineFlow(
   {
-    name: 'getPersonalizedHealthAdviceFlow',
+    name: 'getPersonalizedHealthAdviceFlowV3',
     inputSchema: GetPersonalizedHealthAdviceInputSchema,
     outputSchema: GetPersonalizedHealthAdviceOutputSchema,
   },
@@ -105,7 +69,7 @@ const getPersonalizedHealthAdviceFlow = ai.defineFlow(
       prompt: adviceText,
     });
 
-    if (!media?.url) throw new Error('No audio returned.');
+    if (!media?.url) throw new Error('No audio returned from TTS engine.');
 
     const audioBuffer = Buffer.from(media.url.substring(media.url.indexOf(',') + 1), 'base64');
     const audioData = await toWav(audioBuffer);
@@ -119,7 +83,7 @@ const getPersonalizedHealthAdviceFlow = ai.defineFlow(
 
 /**
  * Main Server Action for advice generation.
- * (v2: refreshed for ID generation)
+ * Registered as v3 to ensure Next.js updates action manifests.
  */
 export async function getPersonalizedHealthAdvice(
   input: GetPersonalizedHealthAdviceInput

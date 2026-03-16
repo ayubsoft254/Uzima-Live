@@ -1,12 +1,13 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for interpreting health documents and providing audible explanations.
+ * @fileOverview A Genkit flow for interpreting health documents.
+ * Version: v3 (Refreshed for Action ID stability)
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import * as wav from 'wav';
+import { toWav } from '@/lib/audio-utils';
 import { Buffer } from 'buffer';
 
 const InterpretHealthDocumentInputSchema = z.object({
@@ -21,41 +22,18 @@ const InterpretHealthDocumentOutputSchema = z.object({
 });
 export type InterpretHealthDocumentOutput = z.infer<typeof InterpretHealthDocumentOutputSchema>;
 
-async function toWav(
-  pcmData: Buffer,
-  channels = 1,
-  rate = 24000,
-  sampleWidth = 2
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    try {
-      const WriterClass = (wav as any).Writer || (wav as any).default?.Writer;
-      if (!WriterClass) return reject(new Error('WAV Writer not found.'));
-      const writer = new WriterClass({ channels, sampleRate: rate, bitDepth: sampleWidth * 8 });
-      const bufs: Buffer[] = [];
-      writer.on('error', (err: Error) => reject(err));
-      writer.on('data', (d: Buffer) => bufs.push(d));
-      writer.on('end', () => resolve(Buffer.concat(bufs).toString('base64')));
-      writer.write(pcmData);
-      writer.end();
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
 const interpretPrompt = ai.definePrompt({
-  name: 'interpretDocumentPromptV2',
+  name: 'interpretDocumentPromptV3',
   input: { schema: InterpretHealthDocumentInputSchema },
   output: { schema: z.object({ explanation: z.string() }) },
   prompt: `Analyze this health document: {{media url=documentDataUri}}
 Language: {{{targetLanguage}}}
-Summarize findings clearly and empathetically.`,
+Summarize findings clearly and empathetically. Focus on critical values or prescriptions.`,
 });
 
 const interpretHealthDocumentFlow = ai.defineFlow(
   {
-    name: 'interpretHealthDocumentFlow',
+    name: 'interpretHealthDocumentFlowV3',
     inputSchema: InterpretHealthDocumentInputSchema,
     outputSchema: InterpretHealthDocumentOutputSchema,
   },
@@ -74,7 +52,7 @@ const interpretHealthDocumentFlow = ai.defineFlow(
       prompt: explanationText,
     });
 
-    if (!media?.url) throw new Error('TTS failed.');
+    if (!media?.url) throw new Error('TTS failed to generate audio for document interpretation.');
 
     const audioBuffer = Buffer.from(media.url.substring(media.url.indexOf(',') + 1), 'base64');
     const audioData = await toWav(audioBuffer);
@@ -88,7 +66,7 @@ const interpretHealthDocumentFlow = ai.defineFlow(
 
 /**
  * Main Server Action for document interpretation.
- * (v2: refreshed for ID generation)
+ * Registered as v3 to ensure Next.js updates action manifests.
  */
 export async function interpretHealthDocument(
   input: InterpretHealthDocumentInput

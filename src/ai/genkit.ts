@@ -3,13 +3,18 @@ import {googleAI} from '@genkit-ai/google-genai';
 
 /**
  * Genkit initialization with explicit API key handling.
- * This ensures that the plugin finds the key regardless of whether it's named
- * GOOGLE_GENAI_API_KEY (common in Genkit docs) or GEMINI_API_KEY (common in SDKs).
+ * Robust check for production environment variables.
  */
+const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+
+if (!apiKey && typeof window === 'undefined') {
+  console.warn('Genkit API Key is missing. Please set GOOGLE_GENAI_API_KEY or GEMINI_API_KEY in your environment variables.');
+}
+
 export const ai = genkit({
   plugins: [
     googleAI({
-      apiKey: process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+      apiKey: apiKey,
     }),
   ],
   model: 'googleai/gemini-2.5-flash',
