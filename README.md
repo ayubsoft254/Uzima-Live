@@ -84,5 +84,8 @@ graph TD
 2. Set `.env`: `GOOGLE_GENAI_API_KEY=your_api_key`
 3. Run: `npm run dev`
 
+### Production Deployment
+When deploying to Firebase App Hosting, ensure you set the `GOOGLE_GENAI_API_KEY` (or `GEMINI_API_KEY`) as a secret or environment variable in the Firebase Console.
+
 ## ⚖️ Disclaimer
 Uzima Live is for informational purposes only and is **not** a substitute for professional medical advice. **In case of an emergency, contact local emergency services immediately.**
