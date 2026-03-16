@@ -11,6 +11,7 @@ import { Buffer } from 'buffer';
 
 /**
  * Helper function for PCM to WAV conversion.
+ * Refactored for better stability in Next.js Server Actions.
  */
 async function toWav(
   pcmData: Buffer,
@@ -20,11 +21,10 @@ async function toWav(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
-      // Handle potential ESM/CJS interop for the wav library
       const WriterClass = (wav as any).Writer || (wav as any).default?.Writer;
       
       if (!WriterClass) {
-        return reject(new Error('WAV Writer class not found in library.'));
+        return reject(new Error('WAV Writer class not found.'));
       }
 
       const writer = new WriterClass({
@@ -34,15 +34,9 @@ async function toWav(
       });
 
       const bufs: Buffer[] = [];
-      writer.on('error', (err: Error) => {
-        reject(err);
-      });
-      writer.on('data', (d: Buffer) => {
-        bufs.push(d);
-      });
-      writer.on('end', () => {
-        resolve(Buffer.concat(bufs).toString('base64'));
-      });
+      writer.on('error', (err: Error) => reject(err));
+      writer.on('data', (d: Buffer) => bufs.push(d));
+      writer.on('end', () => resolve(Buffer.concat(bufs).toString('base64')));
 
       writer.write(pcmData);
       writer.end();
@@ -53,48 +47,41 @@ async function toWav(
 }
 
 const GetPersonalizedHealthAdviceInputSchema = z.object({
-  query: z.string().describe("The user's health concern or question (text or transcript)."),
-  language: z.enum(['English', 'Swahili']).describe('The desired output language for the advice.'),
+  query: z.string().describe("The user's health concern or question."),
+  language: z.enum(['English', 'Swahili']).describe('The output language.'),
 });
 export type GetPersonalizedHealthAdviceInput = z.infer<typeof GetPersonalizedHealthAdviceInputSchema>;
 
 const GetPersonalizedHealthAdviceOutputSchema = z.object({
-  adviceText: z.string().describe('The personalized health advice in text format.'),
-  adviceAudioDataUri: z.string().describe('The personalized health advice in audio format, as a data URI (WAV format).'),
+  adviceText: z.string().describe('Text advice.'),
+  adviceAudioDataUri: z.string().describe('Audio advice (WAV Data URI).'),
 });
 export type GetPersonalizedHealthAdviceOutput = z.infer<typeof GetPersonalizedHealthAdviceOutputSchema>;
 
 const getCommunityHealthData = ai.defineTool(
   {
     name: 'getCommunityHealthData',
-    description: 'Retrieves community health trends and historical patient data from the Uzima Mesh backend.',
-    inputSchema: z.object({
-      query: z.string().describe('The health query or topic.'),
-    }),
-    outputSchema: z.object({
-      communityHealthData: z.string().describe('Relevant community health trends.'),
-    }),
+    description: 'Retrieves community health trends.',
+    inputSchema: z.object({ query: z.string() }),
+    outputSchema: z.object({ communityHealthData: z.string() }),
   },
   async (input) => {
-    if (input.query.toLowerCase().includes('malaria')) {
-      return { communityHealthData: 'Recent community data shows an increase in malaria cases. Symptoms include fever and chills. Local clinics report a 20% rise.' };
-    } else if (input.query.toLowerCase().includes('nutrition')) {
-      return { communityHealthData: 'Childhood malnutrition is a local concern. Initiatives emphasize balanced diets and fortified foods.' };
-    }
-    return { communityHealthData: 'General health trends show stable access to basic healthcare in the community.' };
+    const q = input.query.toLowerCase();
+    if (q.includes('malaria')) return { communityHealthData: 'Malaria cases are rising in the community. Clinics report high fever trends.' };
+    if (q.includes('nutrition')) return { communityHealthData: 'Local programs focus on vitamin enrichment for children.' };
+    return { communityHealthData: 'Standard health availability reported across Uzima Mesh.' };
   }
 );
 
-const getPersonalizedHealthAdvicePrompt = ai.definePrompt({
+const advicePrompt = ai.definePrompt({
   name: 'getPersonalizedHealthAdvicePrompt',
   tools: [getCommunityHealthData],
   input: { schema: GetPersonalizedHealthAdviceInputSchema },
   output: { schema: z.object({ adviceText: z.string() }) },
-  prompt: `You are Uzima Live, a helpful health assistant for the Uzima Mesh network.
-The user has a health concern: "{{{query}}}"
-Your goal is to provide personalized, supportive, and medically grounded advice in {{{language}}}.
-Use the 'getCommunityHealthData' tool to check for local trends if the user's query relates to symptoms or public health topics.
-Return your response as a JSON object with an 'adviceText' field containing the complete advice in {{{language}}}.`,
+  prompt: `You are Uzima Live, a helpful health assistant.
+Concern: "{{{query}}}"
+Language: {{{language}}}
+Check community trends using tools. Return advice in 'adviceText'.`,
 });
 
 const getPersonalizedHealthAdviceFlow = ai.defineFlow(
@@ -104,39 +91,36 @@ const getPersonalizedHealthAdviceFlow = ai.defineFlow(
     outputSchema: GetPersonalizedHealthAdviceOutputSchema,
   },
   async (input) => {
-    const { output: promptOutput } = await getPersonalizedHealthAdvicePrompt(input);
-    const adviceText = promptOutput?.adviceText || "I'm sorry, I couldn't generate advice at this moment.";
+    const { output } = await advicePrompt(input);
+    const adviceText = output?.adviceText || "Unable to generate advice.";
 
     const { media } = await ai.generate({
       model: googleAI.model('gemini-2.5-flash-preview-tts'),
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Algenib' },
-          },
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Algenib' } },
         },
       },
       prompt: adviceText,
     });
 
-    if (!media || !media.url) {
-      throw new Error('No audio media returned from TTS model.');
-    }
+    if (!media?.url) throw new Error('No audio returned.');
 
-    const audioBuffer = Buffer.from(
-      media.url.substring(media.url.indexOf(',') + 1),
-      'base64'
-    );
-    const adviceAudioDataUri = 'data:audio/wav;base64,' + (await toWav(audioBuffer));
+    const audioBuffer = Buffer.from(media.url.substring(media.url.indexOf(',') + 1), 'base64');
+    const audioData = await toWav(audioBuffer);
 
     return {
       adviceText,
-      adviceAudioDataUri,
+      adviceAudioDataUri: `data:audio/wav;base64,${audioData}`,
     };
   }
 );
 
+/**
+ * Main Server Action for advice generation.
+ * (v2: refreshed for ID generation)
+ */
 export async function getPersonalizedHealthAdvice(
   input: GetPersonalizedHealthAdviceInput
 ): Promise<GetPersonalizedHealthAdviceOutput> {

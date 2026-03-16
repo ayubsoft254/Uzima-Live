@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for interpreting health documents (images or PDFs) and providing audible explanations.
+ * @fileOverview A Genkit flow for interpreting health documents and providing audible explanations.
  */
 
 import { ai } from '@/ai/genkit';
@@ -10,36 +10,17 @@ import * as wav from 'wav';
 import { Buffer } from 'buffer';
 
 const InterpretHealthDocumentInputSchema = z.object({
-  documentDataUri: z
-    .string()
-    .describe(
-      "A photo or PDF of a health document, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
-  targetLanguage: z
-    .enum(['English', 'Swahili'])
-    .describe('The language in which the explanation should be provided.'),
+  documentDataUri: z.string().describe("Health document data URI (Base64)."),
+  targetLanguage: z.enum(['English', 'Swahili']).describe('Explanation language.'),
 });
-export type InterpretHealthDocumentInput = z.infer<
-  typeof InterpretHealthDocumentInputSchema
->;
+export type InterpretHealthDocumentInput = z.infer<typeof InterpretHealthDocumentInputSchema>;
 
 const InterpretHealthDocumentOutputSchema = z.object({
-  explanationText: z
-    .string()
-    .describe('The interpreted and explained content of the health document.'),
-  explanationAudioDataUri: z
-    .string()
-    .describe(
-      "The audio explanation of the document's content as a WAV data URI (data:audio/wav;base64,<encoded_audio>)."
-    ),
+  explanationText: z.string().describe('Interpreted text.'),
+  explanationAudioDataUri: z.string().describe('Explanation audio (WAV Data URI).'),
 });
-export type InterpretHealthDocumentOutput = z.infer<
-  typeof InterpretHealthDocumentOutputSchema
->;
+export type InterpretHealthDocumentOutput = z.infer<typeof InterpretHealthDocumentOutputSchema>;
 
-/**
- * Helper function to convert PCM audio to WAV format.
- */
 async function toWav(
   pcmData: Buffer,
   channels = 1,
@@ -48,30 +29,13 @@ async function toWav(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
-      // Handle potential ESM/CJS interop for the wav library
       const WriterClass = (wav as any).Writer || (wav as any).default?.Writer;
-      
-      if (!WriterClass) {
-        return reject(new Error('WAV Writer class not found in library.'));
-      }
-
-      const writer = new WriterClass({
-        channels,
-        sampleRate: rate,
-        bitDepth: sampleWidth * 8,
-      });
-
+      if (!WriterClass) return reject(new Error('WAV Writer not found.'));
+      const writer = new WriterClass({ channels, sampleRate: rate, bitDepth: sampleWidth * 8 });
       const bufs: Buffer[] = [];
-      writer.on('error', (err: Error) => {
-        reject(err);
-      });
-      writer.on('data', (d: Buffer) => {
-        bufs.push(d);
-      });
-      writer.on('end', () => {
-        resolve(Buffer.concat(bufs).toString('base64'));
-      });
-
+      writer.on('error', (err: Error) => reject(err));
+      writer.on('data', (d: Buffer) => bufs.push(d));
+      writer.on('end', () => resolve(Buffer.concat(bufs).toString('base64')));
       writer.write(pcmData);
       writer.end();
     } catch (error) {
@@ -80,28 +44,13 @@ async function toWav(
   });
 }
 
-const interpretDocumentPrompt = ai.definePrompt({
-  name: 'interpretDocumentPrompt',
-  input: {
-    schema: InterpretHealthDocumentInputSchema,
-  },
-  output: {
-    schema: z.object({
-      explanation: z.string().describe('A clear and simple explanation of the document content.'),
-    }),
-  },
-  prompt: `You are a medical interpretation specialist for Uzima Live. 
-The user has provided a health document (image or PDF): {{media url=documentDataUri}}
-Target Language: {{{targetLanguage}}}
-
-Your tasks:
-1. Carefully analyze the text and structure of the document.
-2. Identify the document type (e.g., prescription, lab report, health ID, referral letter).
-3. Summarize the key findings or instructions in simple, empathetic language for a caregiver.
-4. If it's a prescription, emphasize dosage and frequency.
-5. If it's a lab report, explain abnormal results simply without causing panic.
-
-IMPORTANT: Respond ONLY in {{{targetLanguage}}} following the output schema. Ensure you interpret all visible text accurately.`,
+const interpretPrompt = ai.definePrompt({
+  name: 'interpretDocumentPromptV2',
+  input: { schema: InterpretHealthDocumentInputSchema },
+  output: { schema: z.object({ explanation: z.string() }) },
+  prompt: `Analyze this health document: {{media url=documentDataUri}}
+Language: {{{targetLanguage}}}
+Summarize findings clearly and empathetically.`,
 });
 
 const interpretHealthDocumentFlow = ai.defineFlow(
@@ -111,40 +60,36 @@ const interpretHealthDocumentFlow = ai.defineFlow(
     outputSchema: InterpretHealthDocumentOutputSchema,
   },
   async (input) => {
-    const { output: promptOutput } = await interpretDocumentPrompt(input);
-    const explanationText = promptOutput?.explanation || 'Uzima Live was unable to interpret this document clearly. Please ensure the scan is readable and try again.';
+    const { output } = await interpretPrompt(input);
+    const explanationText = output?.explanation || 'Unable to interpret document.';
 
     const { media } = await ai.generate({
       model: googleAI.model('gemini-2.5-flash-preview-tts'),
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Algenib' },
-          },
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Algenib' } },
         },
       },
       prompt: explanationText,
     });
 
-    if (!media || !media.url) {
-      throw new Error('No audio media returned from TTS model.');
-    }
+    if (!media?.url) throw new Error('TTS failed.');
 
-    const audioBuffer = Buffer.from(
-      media.url.substring(media.url.indexOf(',') + 1),
-      'base64'
-    );
-    const explanationAudioBase64 = await toWav(audioBuffer);
-    const explanationAudioDataUri = `data:audio/wav;base64,${explanationAudioBase64}`;
+    const audioBuffer = Buffer.from(media.url.substring(media.url.indexOf(',') + 1), 'base64');
+    const audioData = await toWav(audioBuffer);
 
     return {
       explanationText,
-      explanationAudioDataUri,
+      explanationAudioDataUri: `data:audio/wav;base64,${audioData}`,
     };
   }
 );
 
+/**
+ * Main Server Action for document interpretation.
+ * (v2: refreshed for ID generation)
+ */
 export async function interpretHealthDocument(
   input: InterpretHealthDocumentInput
 ): Promise<InterpretHealthDocumentOutput> {
