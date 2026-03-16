@@ -1,10 +1,6 @@
 'use server';
 /**
  * @fileOverview A Genkit flow for generating personalized health advice based on text or spoken queries and community health data.
- *
- * - getPersonalizedHealthAdvice - A function that handles the process of understanding a query, fetching community data, generating advice, and converting it to speech.
- * - GetPersonalizedHealthAdviceInput - The input type for the getPersonalizedHealthAdvice function.
- * - GetPersonalizedHealthAdviceOutput - The return type for the getPersonalizedHealthAdvice function.
  */
 
 import { ai } from '@/ai/genkit';
@@ -24,17 +20,24 @@ async function toWav(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
-      const writer = new wav.Writer({
+      // Handle potential ESM/CJS interop for the wav library
+      const WriterClass = (wav as any).Writer || (wav as any).default?.Writer;
+      
+      if (!WriterClass) {
+        return reject(new Error('WAV Writer class not found in library.'));
+      }
+
+      const writer = new WriterClass({
         channels,
         sampleRate: rate,
         bitDepth: sampleWidth * 8,
       });
 
       const bufs: Buffer[] = [];
-      writer.on('error', (err) => {
+      writer.on('error', (err: Error) => {
         reject(err);
       });
-      writer.on('data', (d) => {
+      writer.on('data', (d: Buffer) => {
         bufs.push(d);
       });
       writer.on('end', () => {
