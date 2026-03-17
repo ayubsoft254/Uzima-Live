@@ -6,7 +6,8 @@ import { LanguageSelector } from "@/components/health/LanguageSelector";
 import { VoiceAssistant } from "@/components/health/VoiceAssistant";
 import { DocumentScanner } from "@/components/health/DocumentScanner";
 import { ChatAssistant } from "@/components/health/ChatAssistant";
-import { HeartPulse, Mic, ScanEye, Info, MessageSquare } from "lucide-react";
+import { LiveHealthFeed } from "@/components/health/LiveHealthFeed";
+import { HeartPulse, Mic, ScanEye, Info, MessageSquare, Zap } from "lucide-react";
 
 export default function Home() {
   const [language, setLanguage] = useState<'English' | 'Swahili'>('English');
@@ -49,7 +50,7 @@ export default function Home() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto pb-4">
             <TabsContent value="voice" className="mt-0 h-full animate-in fade-in slide-in-from-left-4 duration-500">
               <VoiceAssistant language={language} />
             </TabsContent>
@@ -65,17 +66,22 @@ export default function Home() {
         </Tabs>
       </main>
 
+      {/* Real-time Community Feed */}
+      <section className="mt-4 mb-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
+        <LiveHealthFeed />
+      </section>
+
       {/* Info / Footer Section */}
-      <section className="mt-6 bg-white/50 rounded-2xl p-4 sm:p-6 border border-border shrink-0">
+      <section className="bg-white/50 rounded-2xl p-4 sm:p-6 border border-border shrink-0">
         <div className="flex items-start gap-3">
           <div className="bg-secondary/10 p-2 rounded-lg text-secondary shrink-0">
-            <Info className="w-5 h-5" />
+            <Zap className="w-5 h-5" />
           </div>
           <div className="space-y-1">
-            <h4 className="font-headline font-bold text-sm">How it works</h4>
+            <h4 className="font-headline font-bold text-sm">Real-time Grounding</h4>
             <p className="text-[11px] text-muted-foreground leading-tight">
-              Uzima Live uses Gemini Multimodal AI to understand your voice, read messages, and scan documents. 
-              Our guidance is grounded in the Uzima Mesh health network.
+              Uzima Live uses Gemini Multimodal AI grounded in live community data. 
+              We interpret documents, voice, and chat to provide instant, locally-relevant advice.
             </p>
           </div>
         </div>

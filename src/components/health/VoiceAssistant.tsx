@@ -14,6 +14,7 @@ interface VoiceAssistantProps {
 export function VoiceAssistant({ language }: VoiceAssistantProps) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState("");
   const [response, setResponse] = useState<{ text: string; audio: string | null } | null>(null);
   const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
@@ -49,14 +50,22 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
     recognitionRef.current = recognition;
     
     recognition.lang = language === 'English' ? 'en-US' : 'sw-KE';
-    recognition.interimResults = false;
+    recognition.interimResults = true; // Enabled for real-time interaction
+    recognition.continuous = false;
     recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
+    recognition.onstart = () => {
+      setIsListening(true);
+      setInterimTranscript("");
+    };
+    
+    recognition.onend = () => {
+      setIsListening(false);
+    };
     
     recognition.onerror = (event: any) => {
       setIsListening(false);
+      setInterimTranscript("");
       if (event.error !== 'aborted' && event.error !== 'no-speech') {
         toast({ 
           variant: "destructive", 
@@ -66,14 +75,23 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
       }
     };
 
-    recognition.onresult = async (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      if (transcript) {
-        toast({
-          title: "Heard you:",
-          description: `"${transcript}"`,
-        });
-        handleQuery(transcript);
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      let final = "";
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          final += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+
+      setInterimTranscript(interim);
+
+      if (final) {
+        setInterimTranscript("");
+        handleQuery(final);
       }
     };
 
@@ -122,7 +140,7 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
         <Button
           size="lg"
           variant={isListening ? "destructive" : "default"}
-          className={`h-24 w-24 rounded-full shadow-lg transition-all duration-300 ${isListening ? 'scale-110' : 'hover:scale-105'}`}
+          className={`h-24 w-24 rounded-full shadow-lg transition-all duration-300 ${isListening ? 'scale-110 shadow-primary/20' : 'hover:scale-105'}`}
           onClick={toggleListening}
           disabled={isProcessing}
         >
@@ -136,15 +154,29 @@ export function VoiceAssistant({ language }: VoiceAssistantProps) {
         </Button>
       </div>
 
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-headline font-bold text-primary">
-          {isListening ? "Listening..." : isProcessing ? "Thinking..." : "Tap to Speak"}
-        </h2>
-        <p className="text-muted-foreground max-w-xs mx-auto">
-          {isListening 
-            ? "I'm listening to your health concern. Speak clearly." 
-            : "Tell me your symptoms or health questions in your preferred language."}
-        </p>
+      <div className="text-center space-y-4 w-full px-6">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-headline font-black text-primary tracking-tight">
+            {isListening ? "Listening..." : isProcessing ? "Thinking..." : "Tap to Speak"}
+          </h2>
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-widest opacity-60">
+            {language} Mode
+          </p>
+        </div>
+
+        {isListening && (
+          <div className="min-h-[60px] p-4 bg-primary/5 rounded-2xl border border-primary/10 animate-in fade-in zoom-in-95 duration-300">
+            <p className="text-sm font-medium italic text-primary/80">
+              {interimTranscript || "I'm listening..."}
+            </p>
+          </div>
+        )}
+
+        {!isListening && !isProcessing && (
+          <p className="text-muted-foreground max-w-xs mx-auto text-sm leading-relaxed">
+            Tell me your symptoms or health questions. I'll provide medically grounded advice instantly.
+          </p>
+        )}
       </div>
 
       {response && (
